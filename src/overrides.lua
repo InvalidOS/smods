@@ -2426,20 +2426,9 @@ end
 local uielement_init_ref = UIElement.init
 function UIElement:init(parent, new_UIBox, new_UIT, config, ...)
 	if not config then config = {} end
-	if not config.shader then config.shader = "lem_frosted" end
+	if not config.shader then config.shader = "polychrome" end
 
 	uielement_init_ref(self, parent, new_UIBox, new_UIT, config, ...)
-
-	-- render everything on the parent's canvas
-	-- if parent.canvas then
-	--	self.canvas = parent.canvas
-	-- end
-
-	-- Create a CanvasSprite on init if it's needed
-	--if config and config.shader then
-	--	print(config.shader)
-	--	SMODS.create_uie_canvas(self)
-	--end
 end
 
 local uielement_set_values_ref = UIElement.set_values
