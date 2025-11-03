@@ -3228,30 +3228,7 @@ function SMODS.blind_modifies_draw(key)
 end
 
 -- Creates a CanvasSprite used to apply shaders to UI elements
-function UIElement:create_canvas()
-    if self.config and self.config.shader then
-        print("canvas created!")
-        local tile = G.TILESCALE*G.TILESIZE
-
-        print(self.VT.x, self.VT.y, self.VT.w, self.VT.h)
-        self.canvas = SMODS.CanvasSprite(self.VT.x, self.VT.y, self.VT.w, self.VT.h, self.VT.w * tile, self.VT.h * tile)
-        print(self.canvas)
-        self.canvas.parent = self
-
-        -- define shader draw steps
-        if type(self.config.shader) == "table" then
-            local draw_steps = #self.config.shader > 0 and self.config.shader or {self.config.shader}
-
-            for _, step in ipairs(draw_steps) do
-                step.shadow_height = step.shadow_height or 0
-                if step.no_tilt == nil then step.no_tilt = true end
-            end
-
-            self.canvas:define_draw_steps(draw_steps)
-        end
-    end
-end
-
+-- This being a method tends to break for some reason
 function SMODS.create_uie_canvas(uie)
     if uie.config and uie.config.shader then
         local tile = G.TILESCALE*G.TILESIZE

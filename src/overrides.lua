@@ -2447,6 +2447,8 @@ local uielement_draw_self_ref = UIElement.draw_self
 function UIElement:draw_self(...)
 	if self.canvas then
 		-- set canvas to be the draw target and clear it
+		love.graphics.push()
+		love.graphics.origin()
 		love.graphics.setCanvas(self.canvas)
 		love.graphics.clear(0, 0, 0, 0)
 
@@ -2455,10 +2457,11 @@ function UIElement:draw_self(...)
 
 		-- go back to drawing on the screen
 		love.graphics.setCanvas()
+		love.graphics.pop()
 
 		-- draw canvas
 		self.canvas.role.draw_major = self
-		self.canvas:draw()
+		self.canvas:draw_shader("dissolve")
 	else
 		-- draw normally
 		uielement_draw_self_ref(self, ...)
