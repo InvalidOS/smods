@@ -2436,20 +2436,21 @@ function UIElement:init(parent, new_UIBox, new_UIT, config, ...)
 	-- end
 
 	-- Create a CanvasSprite on init if it's needed
-	if config and config.shader then
-		UIElement:create_canvas()
-	end
+	--if config and config.shader then
+	--	print(config.shader)
+	--	SMODS.create_uie_canvas(self)
+	--end
 end
 
 local uielement_set_values_ref = UIElement.set_values
 function UIElement:set_values(_T, recalculate, ...)
 	uielement_set_values_ref(self, _T, recalculate, ...)
 	if
-		--(self.canvas and (self.canvas.VT.w ~= self.VT.w or self.canvas.VT.h ~= self.VT.h))
-		--[[or]] (recalculate and self.config.shader and not self.canvas)
+		--(self.canvas and (self.canvas.VT.w ~= self.VT.w or self.canvas.VT.h ~= self.VT.h)) or
+		(self.config.shader and not self.canvas and self.VT.w > 0 and self.VT.h > 0)
 	then
-		-- if self.canvas then self.canvas:remove() end
-		UIElement:create_canvas()
+		-- this doesn't cause issues
+		SMODS.create_uie_canvas(self)
 	end
 end
 

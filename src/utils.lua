@@ -3229,27 +3229,49 @@ end
 
 -- Creates a CanvasSprite used to apply shaders to UI elements
 function UIElement:create_canvas()
-    print("canvas created!")
-    if not (self.config and self.config.shader) then return end
+    if self.config and self.config.shader then
+        print("canvas created!")
+        local tile = G.TILESCALE*G.TILESIZE
 
-    local tile = G.TILESCALE*G.TILESIZE
+        print(self.VT.x, self.VT.y, self.VT.w, self.VT.h)
+        self.canvas = SMODS.CanvasSprite(self.VT.x, self.VT.y, self.VT.w, self.VT.h, self.VT.w * tile, self.VT.h * tile)
+        print(self.canvas)
+        self.canvas.parent = self
 
-    self.canvas = SMODS.CanvasSprite(self.VT.x, self.VT.y, self.VT.w, self.VT.h, self.VT.w * tile, self.VT.h * tile)
-    self.canvas.parent = self
+        -- define shader draw steps
+        if type(self.config.shader) == "table" then
+            local draw_steps = #self.config.shader > 0 and self.config.shader or {self.config.shader}
 
-    -- define shader draw steps
-    if type(self.config.shader) == "table" then
-        local draw_steps = #self.config.shader > 0 and self.config.shader or {self.config.shader}
+            for _, step in ipairs(draw_steps) do
+                step.shadow_height = step.shadow_height or 0
+                if step.no_tilt == nil then step.no_tilt = true end
+            end
 
-        for _, step in ipairs(draw_steps) do
-            step.shadow_height = step.shadow_height or 0
-            if step.no_tilt == nil then step.no_tilt = true end
+            self.canvas:define_draw_steps(draw_steps)
         end
-
-        self.canvas:define_draw_steps(draw_steps)
     end
+end
 
-    print(self.canvas)
+function SMODS.create_uie_canvas(uie)
+    if uie.config and uie.config.shader then
+        local tile = G.TILESCALE*G.TILESIZE
+
+        print(uie.VT.x, uie.VT.y, uie.VT.w, uie.VT.h)
+        uie.canvas = SMODS.CanvasSprite(uie.VT.x, uie.VT.y, uie.VT.w, uie.VT.h, uie.VT.w * tile, uie.VT.h * tile)
+        uie.canvas.parent = uie
+
+        -- define shader draw steps
+        if type(uie.config.shader) == "table" then
+            local draw_steps = #uie.config.shader > 0 and uie.config.shader or {uie.config.shader}
+
+            for _, step in ipairs(draw_steps) do
+                step.shadow_height = step.shadow_height or 0
+                if step.no_tilt == nil then step.no_tilt = true end
+            end
+
+            uie.canvas:define_draw_steps(draw_steps)
+        end
+    end
 end
 
 -- this is identical to UIElement:update_object but with some checks changed so it works here
