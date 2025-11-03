@@ -2421,3 +2421,77 @@ function add_tag(_tag)
 	end
 	add_tag_ref(_tag)
 end
+
+-- UIE shaders with CanvasSprite
+local uielement_init_ref = UIElement.init
+function UIElement:init(parent, new_UIBox, new_UIT, config, ...)
+	if not config then config = {} end
+	if not config.shader then config.shader = "lem_frosted" end
+
+	uielement_init_ref(self, parent, new_UIBox, new_UIT, config, ...)
+
+	-- render everything on the parent's canvas
+	-- if parent.canvas then
+	--	self.canvas = parent.canvas
+	-- end
+
+	-- Create a CanvasSprite on init if it's needed
+	if config and config.shader then
+		UIElement:create_canvas()
+	end
+end
+
+local uielement_set_values_ref = UIElement.set_values
+function UIElement:set_values(_T, recalculate, ...)
+	uielement_set_values_ref(self, _T, recalculate, ...)
+	if
+		--(self.canvas and (self.canvas.VT.w ~= self.VT.w or self.canvas.VT.h ~= self.VT.h))
+		--[[or]] (recalculate and self.config.shader and not self.canvas)
+	then
+		-- if self.canvas then self.canvas:remove() end
+		UIElement:create_canvas()
+	end
+end
+
+local uielement_draw_self_ref = UIElement.draw_self
+function UIElement:draw_self(...)
+	if self.canvas then
+		-- set canvas to be the draw target and clear it
+		love.graphics.setCanvas(self.canvas)
+		love.graphics.clear(0, 0, 0, 0)
+
+		-- draw the ui element
+		uielement_draw_self_ref(self, ...)
+
+		-- go back to drawing on the screen
+		love.graphics.setCanvas()
+
+		-- draw canvas
+		self.canvas.role.draw_major = self
+		self.canvas:draw()
+	else
+		-- draw normally
+		uielement_draw_self_ref(self, ...)
+	end
+end
+
+local uielement_remove_ref = UIElement.remove
+function UIElement:remove()
+	if self.canvas then self.canvas:remove() end
+
+	uielement_remove_ref(self)
+end
+
+local uielement_initialize_vt_ref = UIElement.initialize_VT
+function UIElement:initialize_VT(...)
+	uielement_initialize_vt_ref(self, ...)
+
+	if self.canvas then
+        if not self.config.no_role then
+            self.canvas:hard_set_T(self.T.x, self.T.y, self.T.w, self.T.h)
+            self.canvas:move_with_major(0)
+            self.canvas.alignment.prev_type = ''
+            self.canvas:align_to_major()
+        end
+    end
+end

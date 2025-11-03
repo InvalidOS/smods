@@ -3226,3 +3226,58 @@ end
 function SMODS.blind_modifies_draw(key)
     if SMODS.Blinds.modifies_draw[key] then return true end
 end
+
+-- Creates a CanvasSprite used to apply shaders to UI elements
+function UIElement:create_canvas()
+    print("canvas created!")
+    if not (self.config and self.config.shader) then return end
+
+    local tile = G.TILESCALE*G.TILESIZE
+
+    self.canvas = SMODS.CanvasSprite(self.VT.x, self.VT.y, self.VT.w, self.VT.h, self.VT.w * tile, self.VT.h * tile)
+    self.canvas.parent = self
+
+    -- define shader draw steps
+    if type(self.config.shader) == "table" then
+        local draw_steps = #self.config.shader > 0 and self.config.shader or {self.config.shader}
+
+        for _, step in ipairs(draw_steps) do
+            step.shadow_height = step.shadow_height or 0
+            if step.no_tilt == nil then step.no_tilt = true end
+        end
+
+        self.canvas:define_draw_steps(draw_steps)
+    end
+
+    print(self.canvas)
+end
+
+-- this is identical to UIElement:update_object but with some checks changed so it works here
+-- and a few lines removed that'd otherwise break ref_table
+function UIElement:update_canvas()
+    if self.canvas then
+        self.canvas.config.refresh_movement = true
+        if self.canvas.states.hover.is and not self.states.hover.is then
+            self:hover()
+            self.states.hover.is = true
+        end
+        if not self.canvas.states.hover.is and self.states.hover.is then
+            self:stop_hover()
+            self.states.hover.is = false
+        end
+
+		if self.canvas.ui_object_updated then
+			self.canvas.ui_object_updated = nil
+			self.canvas.parent = self
+			self.canvas:set_role(self.config.role or {role_type = 'Minor', major = self})
+			self.canvas:move_with_major(0)
+			if self.canvas.non_recalc then
+				self.parent.content_dimensions.w = self.canvas.T.w
+				self:align(self.parent.T.x - self.canvas.T.x, self.parent.T.y - self.canvas.T.y)
+				self.parent:set_alignments()
+			else
+				self.UIBox:recalculate()
+			end
+    	end
+    end
+end
