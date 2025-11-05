@@ -2425,8 +2425,8 @@ end
 -- UIE shaders with CanvasSprite
 local uielement_init_ref = UIElement.init
 function UIElement:init(parent, new_UIBox, new_UIT, config, ...)
-	if not config then config = {} end
-	if not config.shader then config.shader = "polychrome" end
+	--if not config then config = {} end
+	--if not config.shader then config.shader = "polychrome" end
 
 	uielement_init_ref(self, parent, new_UIBox, new_UIT, config, ...)
 end
@@ -2458,15 +2458,17 @@ function UIElement:draw_self(...)
 
 		-- draw the ui element
 		uielement_draw_self_ref(self, ...)
+		
 
 		-- go back to drawing on the screen
-		love.graphics.translate(0,0)
 		love.graphics.setCanvas()
+
+		love.graphics.translate(0,0)
+
+		self.canvas.role.draw_major = self
+		self.canvas:draw()
 		love.graphics.pop()
 
-		-- draw canvas
-		-- self.canvas.role.draw_major = self
-		self.canvas:draw()
 	else
 		-- draw normally
 		uielement_draw_self_ref(self, ...)
