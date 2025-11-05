@@ -201,3 +201,20 @@ payload = """
 if self.canvas then self.canvas.states.collide.can = self.states.collide.can end
 """
 match_indent = true
+
+## UIElement shaders: test patch
+# UIElement:set_values()
+[[patches]]
+[patches.pattern]
+target = 'engine/ui.lua'
+pattern = '''for k, v in ipairs(vertices) do'''
+position = "at"
+payload = """
+--print("NEW_DRAW")
+for k, v in ipairs(vertices) do
+if self.canvas then
+    --print(v .. " // " .. )
+end
+"""
+match_indent = true
+

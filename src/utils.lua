@@ -3234,6 +3234,7 @@ function SMODS.create_uie_canvas(uie)
         local tile = G.TILESCALE*G.TILESIZE
 
         print(uie.VT.x, uie.VT.y, uie.VT.w, uie.VT.h)
+        --uie.canvas = SMODS.CanvasSprite(uie.VT.x, uie.VT.y, uie.VT.w, uie.VT.h, uie.VT.w * tile, uie.VT.h * tile)
         uie.canvas = SMODS.CanvasSprite(uie.VT.x, uie.VT.y, uie.VT.w, uie.VT.h, uie.VT.w * tile, uie.VT.h * tile)
         uie.canvas.parent = uie
 

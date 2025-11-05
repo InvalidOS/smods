@@ -33,6 +33,28 @@ function SMODS.CanvasSprite:draw_from(other_obj, ms, mr, mx, my)
     love.graphics.pop()
 end
 
+function SMODS.CanvasSprite:draw_self(overlay)
+    if not self.states.visible then return end
+    if self.sprite_pos.x ~= self.sprite_pos_copy.x or self.sprite_pos.y ~= self.sprite_pos_copy.y then
+        self:set_sprite_pos(self.sprite_pos)
+    end
+    prep_draw(self, 1)
+    love.graphics.scale(1/(self.scale.x/self.VT.w), 1/(self.scale.y/self.VT.h))
+    love.graphics.setColor(overlay or G.BRUTE_OVERLAY or G.C.WHITE)
+    love.graphics.draw(
+        self.canvas,
+        self.sprite,
+        0 ,0,
+        0,
+        self.VT.w/(self.T.w)/(self.canvasScale),
+        self.VT.h/(self.T.h)/(self.canvasScale)
+    )
+    love.graphics.pop()
+    add_to_drawhash(self)
+    self:draw_boundingrect()
+    if self.shader_tab then love.graphics.setShader() end
+end
+
 SMODS.DrawSteps = {}
 SMODS.DrawStep = SMODS.GameObject:extend {
     obj_table = SMODS.DrawSteps,
