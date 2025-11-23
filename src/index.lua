@@ -30,3 +30,5 @@ SMODS.update_mod_files = function(id)
     local hash = contents:match('"currentOid":"([^"]*)"')
     sendWarnMessage(hash, "Index")
 end
+
+-- i like branches
