@@ -50,8 +50,9 @@ function SMODS.clean_up_canvas_text(t)
 	t.canvas_text = nil
 end
 
+SMODS.clean_up_children_ignore = {center = true, shadow = true, back = true, h_popup = true, front = true}
 function SMODS.clean_up_children(t)
-	local ignore = {center = true, shadow = true, back = true, h_popup = true, front = true}
+	local ignore = SMODS.clean_up_children_ignore
     for k, v in pairs(t) do
         if not ignore[k] then
             if type(v) == 'table' and v.remove then v:remove() end
@@ -184,6 +185,7 @@ SMODS.DrawStep {
             end
         end
         if self.children.use_button and self.highlighted then self.children.use_button:draw() end
+        if self.children.select_button and self.highlighted then self.children.select_button:draw() end
     end,
 } 
 
@@ -219,7 +221,7 @@ SMODS.DrawStep {
         end
 
          --If the card is not yet discovered
-         if not self.config.center.discovered and (self.ability.consumeable or self.config.center.unlocked) and not self.config.center.demo and not self.bypass_discovery_center then
+         if not self.config.center.discovered and (self.config.center.unlocked ~= false) and not self.config.center.demo and not self.bypass_discovery_center then
             local shared_sprite = (self.ability.set == 'Edition' or self.ability.set == 'Joker') and G.shared_undiscovered_joker or G.shared_undiscovered_tarot
             local scale_mod = -0.05 + 0.05*math.sin(1.8*G.TIMERS.REAL)
             local rotate_mod = 0.03*math.sin(1.219*G.TIMERS.REAL)
@@ -457,7 +459,7 @@ SMODS.DrawStep {
     key = 'debuff',
     order = 70,
     func = function(self)
-        if self.debuff then
+        if self.debuff and not self.delay_debuff then
             self.children.center:draw_shader('debuff', nil, self.ARGS.send_to_shader)
             if self.children.front and (self.ability.delayed or not self:should_hide_front()) then
                 self.children.front:draw_shader('debuff', nil, self.ARGS.send_to_shader)

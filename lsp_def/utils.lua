@@ -48,10 +48,13 @@
 ---@field skipping_booster? true Check if `true` for effects after a Booster Pack is skipped.
 ---@field buying_card? true Check if `true` for effects after buying a card.
 ---@field selling_card? true Check if `true` for effects after selling a card.
+---@field buying_self? true Check if `true` for effects the calculating card is bought.
+---@field selling_self? true Check if `true` for effects the calculating card is sold.
 ---@field reroll_shop? true Check if `true` for effects after rerolling the shop.
 ---@field ending_shop? true Check if `true` for effects after leaving the shop.
 ---@field first_hand_drawn? true Check if `true` for effects after drawing the first hand.
----@field hand_drawn? true Check if `true` for effects after drawing a hand.
+---@field hand_drawn? Card[] List of cards that just got drawn during a blind
+---@field other_drawn? Card[] List of cards that just got drawn outside a blind
 ---@field using_consumeable? true Check if `true` for effects after using a Consumable.
 ---@field skip_blind? true Check if `true` for effects after skipping a blind.
 ---@field playing_card_added? true Check if `true` for effects after a playing card was added into the deck.
@@ -74,6 +77,7 @@
 ---@field modify_hand? true Check if `true` for modifying the chips and mult of the played hand.
 ---@field drawing_cards? true `true` when cards are being drawn
 ---@field amount? number Used for in some contexts to specify a numerical amount.
+---@field initial? number Used in some contexts to specify the original value of a changing number.
 ---@field evaluate_poker_hand? integer Check if `true` for modifying the name, display name or contained poker hands when evaluating a hand.
 ---@field display_name? PokerHands|'Royal Flush'|string Display name of the scoring poker hand.
 ---@field mod_probability? true Check if `true` for effects that make additive or multiplicative modifications to probabilities.
@@ -104,6 +108,7 @@
 ---@field from_shop? true Check if `true` if money changed during the shop.
 ---@field from_consumeable? true Check if `true` if money changed by a consumable.
 ---@field from_scoring? true Check if `true` if money changed during scoring.
+---@field from_cashout? true Check if `true` if money changed from cashing out.
 ---@field modify_ante? number The amount the ante changes by, check for effects before the ante changes.
 ---@field ante_change? true Check if `true` for effects when the ante changes.
 ---@field ante_end? true Check if `true` for when the ante change is for reaching the end of the ante.
@@ -123,6 +128,23 @@
 ---@field new_level? integer Level of the poker hand after the alteration, if it was changed.
 ---@field old_parameters? table<'chips'|'mult'|string, number> Altered scoring parameters of the poker hand before the alteration.
 ---@field new_parameters? table<'chips'|'mult'|string, number> Altered scoring parameters of the poker hand after the alteration.
+---@field modify_final_cashout? true Check if `true` for modifying the amount of money at the end of cashout.
+---@field scaling_card? true Check if `true` for reacting to a card's values being scaled.
+---@field resetting_card? true Check if `true` for reacting to a card's values being reset.
+---@field ref_table? table Used in scaling/resetting contexts as the table containing the affected value.
+---@field ref_value? string Used in scaling/resetting contexts as the key of the affected value.
+---@field value? number Used in scaling context as the current (unscaled) affected value.
+---@field initial_value number Used in resetting context as the initial affected value.
+---@field scalar_table? table Used in scaling context as the table containing the scalar value.
+---@field scalar_value? string Used in scaling context as the key of the scalar value.
+---@field scalar? number Used in scaling context as the current scalar value.
+---@field scalar_factor? number Used in scaling context as the scaling operation's scalar factor.
+---@field reset_value? number Used in resetting context as the target value after the reset.
+---@field operation? '+'|'X'|'-'|string|fun(ref_table:table, ref_value:string, initial:number, change:number)|fun(ref_table:table, ref_value:string, initial:number, reset:number) Used in scaling/resetting context, indicates the operation that will be performed to set the newly scaled value.
+---@field block_overrides? {value:boolean?, scalar:boolean?, message:boolean?}|table Used in scaling/resetting contexts. Set keys cannot by overridden by returned effects.
+---@field scaling_message? table Used in scaling context as message that will be displayed when the operation has been performed.
+---@field reset_message? table Used in resetting context as message that will be displayed when the operation has been performed.
+---@field no_message? true Used in scaling/resetting contexts. If `true`, no message will be displayed when the operation has been performed.
 
 --- Util Functions
 
@@ -136,6 +158,7 @@ function SMODS.merge_lists(...) end
 ---@field quantum_enhancements? boolean Enables "Quantum Enhancement" contexts. Cards can count as having multiple enhancements at once.
 ---@field retrigger_joker? boolean Enables "Joker Retrigger" contexts. Jokers can be retriggered by other jokers or effects.
 ---@field post_trigger? boolean Enables "Post Trigger" contexts. Allows calculating effects after a Joker has been calculated.
+---@field object_weights? boolean Enables individual weights for object polling. 
 ---@field cardareas? SMODS.optional_features.cardareas Enables additional CardArea calculation.
 
 ---@class SMODS.optional_features.cardareas: table
@@ -383,9 +406,10 @@ function SMODS.juice_up_blind() end
 ---@param card Card|table
 ---@param suit? Suits|string Key to the suit.
 ---@param rank? Ranks|string Key to the rank.
+---@param manual_sprites? boolean Set to true to not update the front sprite
 ---@return Card|table? cardOrErr If successful the card. If it failed `nil`.
 ---@return string? msg If it failed, a message describing what went wrong.
-function SMODS.change_base(card, suit, rank) end
+function SMODS.change_base(card, suit, rank, manual_sprites) end
 
 --- Modify a card's rank by the specified amount.
 --- Increase rank if amount is positive, decrease rank if negative.
@@ -393,9 +417,10 @@ function SMODS.change_base(card, suit, rank) end
 ---@nodiscard
 ---@param card Card|table
 ---@param amount number
+---@param manual_sprites? boolean Set to true to not update the front sprite
 ---@return Card|table? cardOrErr If successful the card. If it failed `nil`.
 ---@return string? msg If it failed, a message describing what went wrong.
-function SMODS.modify_rank(card, amount) end
+function SMODS.modify_rank(card, amount, manual_sprites) end
 
 ---@param key string
 ---@param count_debuffed? true
@@ -432,7 +457,7 @@ function SMODS.find_card(key, count_debuffed) end
 ---@field enhancement? Enhancements|string Apply this enhancement.
 ---@field seal? Seals|string Apply this seal.
 ---@field stickers? Stickers[]|string[] Apply all stickers in this array.
----@field force_stickers? Stickers[]|string[] Forces the application of all stickers in this array that are also in stickers.
+---@field force_stickers? true|Stickers[]|string[] Forces the application of all stickers in this array that are also in stickers.
 ---@field allow_duplicates? boolean Allows duplicated cards to be created, even without Showman.
 ---@field rank? Ranks|string|integer Rank of the playing card.
 ---@field suit? Suits|string Suit of the playing card.
@@ -454,8 +479,9 @@ function SMODS.add_card(t) end
 ---@param card Card|table
 ---@param debuff boolean|"reset"|'prevent_debuff'?
 ---@param source string?
+---@param delay boolean? If the application of the shader should be delayed
 --- Sets a flag that debuffs (or prevents debuff on) provided `card`.
-function SMODS.debuff_card(card, debuff, source) end
+function SMODS.debuff_card(card, debuff, source, delay) end
 
 ---@param card Card|table
 --- Recalculate card debuffs.
@@ -520,6 +546,11 @@ function format_ui_value(value) end
 --- Returns the blind amount.
 function SMODS.get_blind_amount(ante) end
 
+--- Converts save data for a single vanilla object.
+---@param entry {count?:number,[("wins"|"losses")]?: table<number,number>, [("wins_by_key"|"losses_by_key")]?:table<string,number>}|table A deck/joker usage entry.
+---@return table
+function convert_usage_entry(entry) end
+
 --- Converts save data for vanilla objects.
 function convert_save_data() end
 
@@ -541,14 +572,16 @@ function SMODS.debug_calculation() end
 
 ---@param card Card|table
 ---@param pack SMODS.Booster|table
----@return boolean|string
+---@return boolean|string, boolean?
 --- Controls if the card should be selectable from a Booster Pack.
+--- Additionally returns `true` as a second value if it can also be used.
 function Card.selectable_from_pack(card, pack) end
 
 ---@param card Card|table
 ---@param pack SMODS.Booster|table
----@return string|{[string]: string}
+---@return string|{[string]: string}, boolean?
 --- Controls the area a card should be after selection from a Booster Pack.
+--- Additionally returns `true` as a second value if it can also be used.
 function SMODS.card_select_area(card, pack) end
 
 ---@param pool (string|"UNAVAILABLE")[]
@@ -654,8 +687,15 @@ function SMODS.smeared_check(card, suit) end
 --- Checks if the provided `hand` meets the conditions to trigger Seeing Double.
 function SMODS.seeing_double_check(hand, suit) end
 
+---@param ctrl string|table
+---@param vars table[]
+---@return table?
+--- Given a `ctrl` string that represents a hex code, a numeric index in `vars` or a valid loc_colour, returns the colour table corresponding to `ctrl`. Given a `ctrl` table, treats `ctrl.c` as the string value of `ctrl`.
+function SMODS.get_loc_colour(ctrl, vars) end
+
 ---@param lines table
 ---@param args table
+---@return table
 --- Handles localization description boxes.
 function SMODS.localize_box(lines, args) end
 
@@ -664,13 +704,23 @@ function SMODS.localize_box(lines, args) end
 --- Returns all description boxes within `multi_box`.
 function SMODS.get_multi_boxes(multi_box) end
 
+---@param card Card
+---@return boolean is_playing_card
+-- Checks and returns whether a card is a playing card.
+function SMODS.is_playing_card(card) end
+
+---@param card Card 
+---@return boolean success
+-- Pinches and :removes() a card. (context.joker_type_destroyed is calculated, and may prevent destruction)
+function SMODS.pinch_and_remove(card) end
+
 ---@param cards Card|Card[]
----@param bypass_eternal boolean?
----@param immediate boolean?
----@param skip_anim boolean?
----@param colours table?
---- Destroys the cards passed to the function, handling calculation events that need to happen
-function SMODS.destroy_cards(cards, bypass_eternal, immediate, skip_anim, colours) end
+---@param args? {bypass_eternal?: boolean, immediate?: boolean, pinch_anim?: boolean, colours?: table<integer, table>[], delay?: number, destroy_func?: fun(card: Card, args: table<>)}
+---@param ... ... Old signature arguments in the above order, up to and including colours
+---@return Card[] destroy_queued
+--- Destroys the cards passed to the function, handling calculation events that need to happen.
+--- Returns list of cards queued for destruction
+function SMODS.destroy_cards(cards, args, ...) end
 
 ---@param hand_space number
 --- Used to draw cards to hand outside of the normal card draw
@@ -722,10 +772,19 @@ function SMODS.is_poker_hand_visible(handname) end
 function SMODS.is_eternal(card, trigger) end
 
 ---@param card Card|table
----@param args? table|{ref_table: table, ref_value: string, scalar_value: string, scalar_table: table?, operation: '+'|'X'|'-'|string|fun(ref_table: table, ref_value: string, initial: number, change: number)?, block_overrides: {value: boolean?, scalar: boolean?, message: boolean?}?, scaling_message: table?, message_key: string?, message_colour: table?, message_delay: number?, no_message: boolean?}
---- Tells Jokers that this card is scaling allowing for scaling detection
---- Args must contain `ref_table`, `ref_value`, and `scalar_value`. It may optionally contain `scalar_table`, used in place of `ref_table` for the `scalar_value`, and `operation` to designate the scaling operation, which defaults to `"+"`
+---@param args? table|{ref_table: table, ref_value: string, scalar_value: string?, scalar_table: table?, scalar_factor:number?, operation: '+'|'X'|'-'|string|fun(ref_table: table, ref_value: string, initial: number, change: number)?, block_overrides: {value: boolean?, scalar: boolean?, message: boolean?}?, scaling_message: table?, message_key: string?, message_colour: table?, message_delay: number?, no_message: boolean?}
+---@return number, number
+--- Tells Jokers that this card is scaling allowing for scaling detection.
+--- Args must contain `ref_table` and `ref_value`. If `scalar_value` is not defined, it is automatically created.
+--- It may also optionally contain `scalar_table`, used in place of `ref_table` for the `scalar_value`, and `operation` to designate the scaling operation, which defaults to `"+"`
+--- Returns the final scaled value, and what it had been scaled by
 function SMODS.scale_card(card, args) end
+
+---@param card Card|table
+---@param args? table|{ref_table: table, ref_value: string, reset_value: number, operation: fun(ref_table: table, ref_value: string, initial: number, reset: number)?, block_overrides: boolean?, reset_message: table?, message_key: string?, message_colour: table?, message_delay: number?, no_message: boolean?}
+--- Tells Jokers that this card is resetting allowing for resetting detection
+--- Args must contain `ref_table`, `ref_value`, and `reset_value`. It may optionally contain an `operation` function to define the behavior of resetting
+function SMODS.reset_card(card, args) end
 
 ---@param prototype_obj SMODS.GameObject|table
 ---@param args table?
@@ -733,6 +792,13 @@ function SMODS.scale_card(card, args) end
 --- Checks whether an object should be added to the pool.
 --- i.e. the in_pool method doesn't exist or it returns `true`
 function SMODS.add_to_pool(prototype_obj, args) end
+
+---@param prototype_obj SMODS.GameObject|table
+---@param args table?
+---@return boolean?, table?
+--- Checks whether an object should be hidden from the collection.
+--- i.e. the no_collection method doesn't exist or it returns `false`
+function SMODS.hide_from_collection(prototype_obj, args) end
 
 ---@param context CalcContext|table The context being pushed
 ---@param func string|nil The function/file from which the call originates
@@ -743,6 +809,14 @@ function SMODS.push_to_context_stack(context, func) end
 ---@param func string|nil The function/file from which the call originates
 --- Pop a context from the SMODS.context_stack. (Removes 1 from .count)
 function SMODS.pop_from_context_stack(context, func) end
+
+---@param stack_index integer? Optionally the index of the context in the SMODS.context_stack from which to return the latest evaluee. -1 for previous context.
+--- Returns the latest evaluee of the context at stack_index in the SMODS.context_stack
+function SMODS.get_context_evaluee(stack_index) end
+
+---@param previous_context boolean? Whether or not to check the current context's previous evaluee, skipped if this is true.
+--- Returns the previous evaluee, first checking the current SMODS.context_stack entry's previous evaluee and then checking the previous entry's latest evaluee.
+function SMODS.get_previous_evaluee() end
 
 ---@return CalcContext|table|nil
 --- Returns the second to last context from the SMODS.context_stack.
@@ -760,6 +834,16 @@ function SMODS.update_context_flags(context, flags) end
 --- (e.g. "enhancement" for context.check_enhancement)
 --- or false if the [context] isn't a getter context.
 function SMODS.is_getter_context(context) end
+
+---@param context CalcContext|table The context checked
+---@return boolean
+-- Returns whether or not the given context can retrigger (by checking SMODS.CONTEXT_RETRIGGER_BLACKLIST)
+function SMODS.can_context_retrigger(context) end
+
+---@param context CalcContext|table The context checked
+---@return boolean
+--- Returns whether or not the given context can post_trigger (by checking SMODS.CONTEXT_POST_TRIGGER_BLACKLIST)
+function SMODS.can_context_post_trigger(context) end
 
 ---@param eval_object SMODS.GameObject|table The object that will be evaluated next if this returns false
 ---@return boolean
@@ -859,7 +943,7 @@ function SMODS.mod_blind_size(mod_blind_size) end
 
 ---Copies a card
 ---@param card Card|table? Card to copy
----@param args CopyCardArgs
+---@param args CopyCardArgs?
 ---@return Card|table
 function SMODS.copy_card(card, args) end
 
@@ -869,3 +953,16 @@ function SMODS.copy_card(card, args) end
 ---@param args {set: string?, area: CardArea|table?, playing_card: integer?}?
 ---@return Card|table
 function SMODS.add_to_deck(card, args) end
+
+-- Util function to render one card to a `.png` file, saved to `love.filesystem.getSaveDirectory()`
+---@param card Card|table Card to save as an image
+---@param scale number? Scale to render the card at (default = G.SETTINGS.GRAPHICS.texture_scaling)
+---@param filename string? Name of the file (default = [center.key])
+function SMODS.card_to_image(card, scale, filename) end
+
+---Checks if a card counts as at least one suit that matches the provided suit shade
+---@param card Card|table Card to check
+---@param shade string Suit shade to check for
+---@param bypass_debuff boolean? Whether to ignore the card's debuff status
+---@return boolean
+function Card.is_suit_shade(card, shade, bypass_debuff) end
